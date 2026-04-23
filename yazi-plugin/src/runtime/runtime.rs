@@ -1,5 +1,9 @@
 use mlua::{IntoLua, Lua, LuaSerdeExt, Value};
-use yazi_binding::{Composer, ComposerGet, ComposerSet, SER_OPT, Url, config::{OpenRules, Opener}, elements::Wrap};
+use yazi_binding::{
+	Composer, ComposerGet, ComposerSet, SER_OPT, Url,
+	config::{OpenRules, Opener},
+	elements::Wrap,
+};
 use yazi_boot::ARGS;
 use yazi_config::YAZI;
 
@@ -19,7 +23,9 @@ pub fn compose() -> Composer<ComposerGet, ComposerSet> {
 		.into_lua(lua)
 	}
 
-	fn set(_: &Lua, _: &[u8], value: Value) -> mlua::Result<Value> { Ok(value) }
+	fn set(_: &Lua, _: &[u8], value: Value) -> mlua::Result<Value> {
+		Ok(value)
+	}
 
 	Composer::new(get, set)
 }
@@ -32,7 +38,9 @@ fn open() -> Composer<ComposerGet, ComposerSet> {
 		}
 	}
 
-	fn set(_: &Lua, _: &[u8], value: Value) -> mlua::Result<Value> { Ok(value) }
+	fn set(_: &Lua, _: &[u8], value: Value) -> mlua::Result<Value> {
+		Ok(value)
+	}
 
 	Composer::new(get, set)
 }
@@ -47,7 +55,9 @@ fn args() -> Composer<ComposerGet, ComposerSet> {
 		}
 	}
 
-	fn set(_: &Lua, _: &[u8], value: Value) -> mlua::Result<Value> { Ok(value) }
+	fn set(_: &Lua, _: &[u8], value: Value) -> mlua::Result<Value> {
+		Ok(value)
+	}
 
 	Composer::new(get, set)
 }
@@ -94,6 +104,7 @@ fn preview() -> Composer<ComposerGet, ComposerSet> {
 		let p = &YAZI.preview;
 		match key {
 			b"wrap" => Wrap::from(p.wrap).into_lua(lua)?,
+			b"position" => lua.to_value_with(&p.position, SER_OPT)?,
 			b"tab_size" => p.tab_size.into_lua(lua)?,
 			b"max_width" => p.max_width.into_lua(lua)?,
 			b"max_height" => p.max_height.into_lua(lua)?,
@@ -111,7 +122,9 @@ fn preview() -> Composer<ComposerGet, ComposerSet> {
 		.into_lua(lua)
 	}
 
-	fn set(_: &Lua, _: &[u8], value: Value) -> mlua::Result<Value> { Ok(value) }
+	fn set(_: &Lua, _: &[u8], value: Value) -> mlua::Result<Value> {
+		Ok(value)
+	}
 
 	Composer::new(get, set)
 }
@@ -136,7 +149,9 @@ fn tasks() -> Composer<ComposerGet, ComposerSet> {
 		.into_lua(lua)
 	}
 
-	fn set(_: &Lua, _: &[u8], value: Value) -> mlua::Result<Value> { Ok(value) }
+	fn set(_: &Lua, _: &[u8], value: Value) -> mlua::Result<Value> {
+		Ok(value)
+	}
 
 	Composer::new(get, set)
 }

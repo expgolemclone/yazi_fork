@@ -10,8 +10,8 @@ end
 
 function Markers:build()
 	self._children = {
-		Marker:new(self._chunks[1], self._tab.parent),
-		Marker:new(self._chunks[2], self._tab.current),
+		Marker:new(self._chunks.marker_parent, self._tab.parent),
+		Marker:new(self._chunks.marker_current, self._tab.current),
 	}
 end
 

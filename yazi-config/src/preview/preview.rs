@@ -7,26 +7,27 @@ use yazi_fs::Xdg;
 use yazi_shared::{SStr, timestamp_us};
 use yazi_shim::toml::DeserializeOverHook;
 
-use super::PreviewWrap;
+use super::{PreviewPosition, PreviewWrap};
 use crate::normalize_path;
 
 #[derive(Debug, Deserialize, DeserializeOver2, Serialize)]
 pub struct Preview {
-	pub wrap:       PreviewWrap,
-	pub tab_size:   u8,
-	pub max_width:  u16,
+	pub wrap: PreviewWrap,
+	pub position: PreviewPosition,
+	pub tab_size: u8,
+	pub max_width: u16,
 	pub max_height: u16,
 
 	#[serde(deserialize_with = "deserialize_cache_dir")]
 	pub cache_dir: PathBuf,
 
 	#[serde(deserialize_with = "deserialize_image_delay")]
-	pub image_delay:   u8,
-	pub image_filter:  String,
+	pub image_delay: u8,
+	pub image_filter: String,
 	#[serde(deserialize_with = "deserialize_image_quality")]
 	pub image_quality: u8,
 
-	pub ueberzug_scale:  f32,
+	pub ueberzug_scale: f32,
 	pub ueberzug_offset: (f32, f32, f32, f32),
 }
 

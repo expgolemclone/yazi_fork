@@ -1,16 +1,19 @@
 use std::{path::PathBuf, process::Stdio};
 
 use anyhow::{Result, bail};
-use image::ImageReader;
+use image::metadata::Orientation;
 use ratatui::layout::Rect;
-use tokio::{io::AsyncWriteExt, process::{Child, Command}, sync::mpsc::{self, UnboundedSender}};
+use tokio::{
+	io::AsyncWriteExt,
+	process::{Child, Command},
+	sync::mpsc::{self, UnboundedSender},
+};
 use tracing::{debug, warn};
 use yazi_config::YAZI;
-use yazi_emulator::Dimension;
 use yazi_shared::{LOG_LEVEL, env_exists};
 use yazi_shim::{cell::RoCell, strum::IntoStr};
 
-use crate::Adapter;
+use crate::{Adapter, ImageInfo};
 
 type Cmd = Option<(PathBuf, Rect)>;
 
@@ -49,19 +52,14 @@ impl Ueberzug {
 			bail!("uninitialized ueberzugpp");
 		};
 
-		let (w, h, path) = tokio::task::spawn_blocking(move || {
-			ImageReader::open(&path)?.with_guessed_format()?.into_dimensions().map(|(w, h)| (w, h, path))
-		})
-		.await??;
-
-		let area = Dimension::cell_size()
-			.map(|(cw, ch)| Rect {
-				x:      max.x,
-				y:      max.y,
-				width:  max.width.min((w.min(YAZI.preview.max_width as _) as f64 / cw).ceil() as _),
-				height: max.height.min((h.min(YAZI.preview.max_height as _) as f64 / ch).ceil() as _),
-			})
-			.unwrap_or(max);
+		let info = ImageInfo::new(path.clone()).await?;
+		let area = crate::Image::fit_area(
+			crate::Image::oriented_size(
+				info.orientation.unwrap_or(Orientation::NoTransforms),
+				(info.width, info.height),
+			),
+			max,
+		);
 
 		tx.send(Some((path, area)))?;
 		Adapter::shown_store(area);

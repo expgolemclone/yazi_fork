@@ -14,7 +14,7 @@ pub(crate) struct KgpOld;
 
 impl KgpOld {
 	pub(crate) async fn image_show(path: PathBuf, max: Rect) -> Result<Rect> {
-		let img = Image::downscale(path, max).await?;
+		let img = Image::fit(path, max).await?;
 		let area = Image::pixel_area((img.width(), img.height()), max);
 		let b = Self::encode(img).await?;
 

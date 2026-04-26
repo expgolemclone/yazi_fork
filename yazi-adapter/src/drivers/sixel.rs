@@ -4,7 +4,11 @@ use anyhow::{Result, bail};
 use crossterm::{cursor::MoveTo, queue};
 use image::{DynamicImage, GenericImageView, RgbImage};
 use palette::{Srgb, cast::ComponentsAs};
-use quantette::{PaletteSize, color_map::IndexedColorMap, wu::{BinnerU8x3, WuU8x3}};
+use quantette::{
+	PaletteSize,
+	color_map::IndexedColorMap,
+	wu::{BinnerU8x3, WuU8x3},
+};
 use ratatui::layout::Rect;
 use yazi_emulator::{CLOSE, ESCAPE, Emulator, START};
 
@@ -19,7 +23,7 @@ struct QuantizeOutput<T> {
 
 impl Sixel {
 	pub(crate) async fn image_show(path: PathBuf, max: Rect) -> Result<Rect> {
-		let img = Image::downscale(path, max).await?;
+		let img = Image::fit(path, max).await?;
 		let area = Image::pixel_area((img.width(), img.height()), max);
 		let b = Self::encode(img).await?;
 

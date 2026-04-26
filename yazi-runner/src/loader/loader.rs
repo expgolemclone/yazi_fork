@@ -39,6 +39,7 @@ impl Default for Loader {
 			("fzf".to_owned(), preset!("plugins/fzf").into()),
 			("image".to_owned(), preset!("plugins/image").into()),
 			("init".to_owned(), preset!("plugins/init").into()),
+			("invert-image".to_owned(), preset!("plugins/invert-image").into()),
 			("json".to_owned(), preset!("plugins/json").into()),
 			("magick".to_owned(), preset!("plugins/magick").into()),
 			("mime".to_owned(), preset!("plugins/mime").into()),

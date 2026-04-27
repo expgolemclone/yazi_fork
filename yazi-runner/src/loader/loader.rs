@@ -40,6 +40,7 @@ impl Default for Loader {
 			("image".to_owned(), preset!("plugins/image").into()),
 			("init".to_owned(), preset!("plugins/init").into()),
 			("invert-image".to_owned(), preset!("plugins/invert-image").into()),
+			("invert-pdf".to_owned(), preset!("plugins/invert-pdf").into()),
 			("json".to_owned(), preset!("plugins/json").into()),
 			("magick".to_owned(), preset!("plugins/magick").into()),
 			("mime".to_owned(), preset!("plugins/mime").into()),

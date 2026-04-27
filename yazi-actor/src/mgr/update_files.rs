@@ -3,9 +3,13 @@ use yazi_core::tab::Folder;
 use yazi_fs::FilesOp;
 use yazi_macro::{act, render, succ};
 use yazi_parser::mgr::UpdateFilesForm;
-use yazi_shared::{data::Data, url::{UrlLike, UrlMapExt}};
+use yazi_shared::{
+	data::Data,
+	url::{UrlLike, UrlMapExt},
+};
 use yazi_watcher::local::LINKED;
 
+use crate::mgr::FavoritesIo;
 use crate::{Actor, Ctx};
 
 pub struct UpdateFiles;
@@ -18,13 +22,20 @@ impl Actor for UpdateFiles {
 	fn act(cx: &mut Ctx, form: Self::Form) -> Result<Data> {
 		let revision = cx.current().files.revision;
 		let linked: Vec<_> = LINKED.read().from_dir(form.op.cwd()).map(|u| form.op.chdir(u)).collect();
+		let mut favorites = cx.mgr.favorites.clone();
 
 		for op in [form.op].into_iter().chain(linked) {
 			cx.mgr.yanked.apply_op(&op);
+			favorites.apply_op(&op);
 			Self::update_tab(cx, op).ok();
 		}
 
 		render!(cx.mgr.yanked.catchup_revision(false));
+		if favorites != cx.mgr.favorites {
+			FavoritesIo::save(&favorites)?;
+			cx.mgr.favorites = favorites;
+			render!();
+		}
 		act!(mgr:hidden, cx).ok();
 		act!(mgr:sort, cx).ok();
 

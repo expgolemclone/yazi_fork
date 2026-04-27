@@ -7,6 +7,7 @@ use yazi_parser::VoidForm;
 use yazi_shared::{data::Data, strand::StrandLike, url::UrlLike};
 
 use crate::Actor;
+use crate::mgr::FavoritesIo;
 
 pub struct Bootstrap;
 
@@ -27,6 +28,7 @@ impl Actor for Bootstrap {
 			}
 		}
 
+		cx.mgr.favorites = FavoritesIo::load()?;
 		succ!();
 	}
 }

@@ -5786,6 +5786,7 @@ dependencies = [
  "paste",
  "ratatui",
  "scopeguard",
+ "serde_json",
  "tokio",
  "tokio-stream",
  "tracing",

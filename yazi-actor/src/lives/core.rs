@@ -9,17 +9,20 @@ pub(super) struct Core {
 	inner: PtrCell<yazi_core::Core>,
 
 	c_active: Option<Value>,
-	c_tabs:   Option<Value>,
-	c_tasks:  Option<Value>,
+	c_tabs: Option<Value>,
+	c_tasks: Option<Value>,
 	c_yanked: Option<Value>,
-	c_layer:  Option<Value>,
-	c_which:  Option<Value>,
+	c_favorites: Option<Value>,
+	c_layer: Option<Value>,
+	c_which: Option<Value>,
 }
 
 impl Deref for Core {
 	type Target = yazi_core::Core;
 
-	fn deref(&self) -> &Self::Target { &self.inner }
+	fn deref(&self) -> &Self::Target {
+		&self.inner
+	}
 }
 
 impl Core {
@@ -28,11 +31,12 @@ impl Core {
 			inner: inner.into(),
 
 			c_active: None,
-			c_tabs:   None,
-			c_tasks:  None,
+			c_tabs: None,
+			c_tasks: None,
 			c_yanked: None,
-			c_layer:  None,
-			c_which:  None,
+			c_favorites: None,
+			c_layer: None,
+			c_which: None,
 		})
 	}
 }
@@ -57,6 +61,7 @@ impl UserData for Core {
 				b"tabs" => reuse!(tabs, super::Tabs::make(&me.mgr.tabs)),
 				b"tasks" => reuse!(tasks, super::Tasks::make(&me.tasks)),
 				b"yanked" => reuse!(yanked, super::Yanked::make(&me.mgr.yanked)),
+				b"favorites" => reuse!(favorites, super::Favorites::make(&me.mgr.favorites)),
 				b"layer" => {
 					reuse!(layer, Ok::<_, mlua::Error>(yazi_binding::Layer::from(me.layer())))
 				}

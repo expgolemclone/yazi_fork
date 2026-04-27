@@ -9,16 +9,16 @@ use super::Lives;
 use crate::lives::PtrCell;
 
 pub(super) struct File {
-	idx:    usize,
+	idx: usize,
 	folder: PtrCell<yazi_core::tab::Folder>,
-	tab:    PtrCell<yazi_core::tab::Tab>,
+	tab: PtrCell<yazi_core::tab::Tab>,
 
-	v_cha:     Option<Value>,
-	v_url:     Option<Value>,
+	v_cha: Option<Value>,
+	v_url: Option<Value>,
 	v_link_to: Option<Value>,
 
-	v_name:  Option<Value>,
-	v_path:  Option<Value>,
+	v_name: Option<Value>,
+	v_path: Option<Value>,
 	v_cache: Option<Value>,
 
 	v_bare: Option<Value>,
@@ -27,11 +27,15 @@ pub(super) struct File {
 impl Deref for File {
 	type Target = yazi_fs::File;
 
-	fn deref(&self) -> &Self::Target { &self.folder.files[self.idx] }
+	fn deref(&self) -> &Self::Target {
+		&self.folder.files[self.idx]
+	}
 }
 
 impl AsRef<yazi_fs::File> for File {
-	fn as_ref(&self) -> &yazi_fs::File { self }
+	fn as_ref(&self) -> &yazi_fs::File {
+		self
+	}
 }
 
 impl File {
@@ -67,7 +71,9 @@ impl File {
 	}
 
 	#[inline]
-	fn is_hovered(&self) -> bool { self.idx == self.folder.cursor }
+	fn is_hovered(&self) -> bool {
+		self.idx == self.folder.cursor
+	}
 }
 
 impl UserData for File {
@@ -138,6 +144,11 @@ impl UserData for File {
 			})
 		});
 		methods.add_method("is_selected", |_, me, ()| Ok(me.tab.selected.contains(&me.url)));
+		methods.add_method("is_favorited", |lua, me, ()| {
+			lua.named_registry_value::<AnyUserData>("cx")?.borrow_scoped(|core: &yazi_core::Core| {
+				Ok::<_, mlua::Error>(core.mgr.favorites.contains(&me.url))
+			})
+		});
 		methods.add_method("found", |lua, me, ()| {
 			lua.named_registry_value::<AnyUserData>("cx")?.borrow_scoped(|core: &yazi_core::Core| {
 				let Some(finder) = &core.active().finder else {

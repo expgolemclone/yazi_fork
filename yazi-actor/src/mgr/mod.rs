@@ -12,6 +12,8 @@ yazi_macro::mod_flat!(
 	download
 	enter
 	escape
+	favorite
+	favorites_io
 	filter
 	filter_do
 	find

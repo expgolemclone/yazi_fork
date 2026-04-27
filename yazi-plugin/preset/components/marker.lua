@@ -60,6 +60,8 @@ function Marker:style(file)
 		return th.mgr.marker_copied
 	elseif yanked == 2 then
 		return th.mgr.marker_cut
+	elseif file:is_favorited() then
+		return th.mgr.marker_favorited
 	end
 end
 

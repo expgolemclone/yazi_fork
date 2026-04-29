@@ -114,7 +114,7 @@ mod tests {
 	#[test]
 	fn test_split() {
 		yazi_shared::init_tests();
-		yazi_fs::init();
+		yazi_fs::init_tests();
 
 		assert_eq!(Trigger::split_url(""), None);
 		assert_eq!(Trigger::split_url("sftp://test"), None);
@@ -143,7 +143,8 @@ mod tests {
 	#[cfg(windows)]
 	#[test]
 	fn test_split() {
-		yazi_fs::init();
+		yazi_shared::init_tests();
+		yazi_fs::init_tests();
 		compare("foo", "", "foo");
 
 		compare(r"foo\", r"foo\", "");

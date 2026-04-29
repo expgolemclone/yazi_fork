@@ -101,8 +101,8 @@ mod tests {
 				env::set_var("XDG_STATE_HOME", root.join("state"));
 			}
 
-			yazi_shared::init();
-			yazi_fs::init();
+			yazi_shared::init_tests();
+			yazi_fs::init_tests();
 			yazi_config::init().unwrap();
 			yazi_boot::init_default();
 			yazi_watcher::init();

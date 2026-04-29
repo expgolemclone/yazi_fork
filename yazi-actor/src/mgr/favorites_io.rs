@@ -5,6 +5,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use yazi_boot::BOOT;
+use yazi_config::YAZI;
 use yazi_core::mgr::Favorites;
 use yazi_shared::url::UrlBuf;
 
@@ -12,7 +13,7 @@ pub(crate) struct FavoritesIo;
 
 impl FavoritesIo {
 	pub(crate) fn path() -> PathBuf {
-		BOOT.state_dir.join("favorites.json")
+		Self::resolve_path(&YAZI.mgr.favorites_file, &BOOT.state_dir)
 	}
 
 	pub(crate) fn load() -> Result<Favorites> {
@@ -21,6 +22,14 @@ impl FavoritesIo {
 
 	pub(crate) fn save(favorites: &Favorites) -> Result<()> {
 		Self::save_path(&Self::path(), favorites)
+	}
+
+	fn resolve_path(configured: &Path, state_dir: &Path) -> PathBuf {
+		if configured.as_os_str().is_empty() {
+			state_dir.join("favorites.json")
+		} else {
+			configured.to_path_buf()
+		}
 	}
 
 	fn load_path(path: &Path) -> Result<Favorites> {
@@ -102,6 +111,22 @@ mod tests {
 
 		let favorites = load_path(&dir.child("favorites.json")).unwrap();
 		assert!(favorites.is_empty());
+	}
+
+	#[test]
+	fn resolve_path_uses_state_dir_by_default() {
+		let configured = PathBuf::new();
+		let path = FavoritesIo::resolve_path(&configured, Path::new("/state/yazi"));
+
+		assert_eq!(PathBuf::from("/state/yazi/favorites.json"), path);
+	}
+
+	#[test]
+	fn resolve_path_prefers_configured_path() {
+		let configured = PathBuf::from("/repo/state/favorites.json");
+		let path = FavoritesIo::resolve_path(&configured, Path::new("/state/yazi"));
+
+		assert_eq!(configured, path);
 	}
 
 	#[test]

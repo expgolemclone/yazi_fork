@@ -27,6 +27,8 @@
 !scripts/**
 !snap/
 !snap/**
+!state/
+!state/favorites.json
 !stylua.toml
 !yazi-actor/
 !yazi-actor/**

@@ -15,6 +15,7 @@ show_hidden    = false
 show_symlink   = true
 scrolloff      = 5
 mouse_events   = [ "click", "scroll", "drag" ]
+favorites_file = ""
 
 [preview]
 wrap            = "no"

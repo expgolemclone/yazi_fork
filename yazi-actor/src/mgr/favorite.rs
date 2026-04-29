@@ -79,22 +79,40 @@ fn favorite_message(total: usize, added: usize, removed: usize) -> String {
 
 #[cfg(test)]
 mod tests {
-	use std::{env, fs, path::{Path, PathBuf}, sync::Once, time::{SystemTime, UNIX_EPOCH}};
+	use std::{
+		env, fs,
+		path::{Path, PathBuf},
+		sync::Once,
+		time::{SystemTime, UNIX_EPOCH},
+	};
 
+	use super::*;
 	use yazi_boot::BOOT;
 	use yazi_core::Core;
 	use yazi_fs::{File, FolderStage};
-	use super::*;
 
-	fn test_root() -> PathBuf { env::temp_dir().join("yazi-actor-favorite-tests") }
+	fn test_root() -> PathBuf {
+		env::temp_dir().join("yazi-actor-favorite-tests")
+	}
+
+	fn configured_favorites_file() -> PathBuf {
+		test_root().join("managed/favorites.json")
+	}
 
 	fn init_test_env() {
 		static ONCE: Once = Once::new();
 
 		ONCE.call_once(|| {
 			let root = test_root();
-			fs::create_dir_all(root.join("config")).unwrap();
+			let _ = fs::remove_dir_all(&root);
+			fs::create_dir_all(root.join("config/yazi")).unwrap();
 			fs::create_dir_all(root.join("state")).unwrap();
+			let favorites_file = configured_favorites_file().to_string_lossy().replace('\\', "\\\\");
+			fs::write(
+				root.join("config/yazi/yazi.toml"),
+				format!("[mgr]\nfavorites_file = \"{favorites_file}\"\n"),
+			)
+			.unwrap();
 
 			unsafe {
 				env::set_var("XDG_CONFIG_HOME", root.join("config"));
@@ -157,8 +175,10 @@ mod tests {
 		let file = PathBuf::from(format!("/tmp/yazi-favorite-{unique}.txt"));
 		let cwd = file.parent().unwrap().to_path_buf();
 		let state_file = BOOT.state_dir.join("favorites.json");
+		let managed_file = configured_favorites_file();
 
 		let _ = fs::remove_file(&state_file);
+		let _ = fs::remove_file(&managed_file);
 
 		let mut core = Core::make();
 		core.mgr.tabs[0].current.url = cwd.clone().into();
@@ -172,9 +192,10 @@ mod tests {
 		Favorite::act(&mut cx, FavoriteForm { urls: vec![file.clone().into()], state: None }).unwrap();
 
 		assert!(cx.mgr.favorites.contains(&file));
-		assert!(state_file.exists());
+		assert!(managed_file.exists());
+		assert!(!state_file.exists());
 
-		let saved = fs::read_to_string(state_file).unwrap();
+		let saved = fs::read_to_string(managed_file).unwrap();
 		assert!(saved.contains(&file.to_string_lossy().into_owned()));
 
 		let msg = cx.notify.messages.last().unwrap();

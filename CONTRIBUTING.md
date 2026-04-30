@@ -22,11 +22,13 @@ Examples of user-facing changes:
 Apply the local deployment after verification:
 
 ```sh
-nixos-rebuild build --flake ~/nix-config#nixos
-sudo -n nixos-rebuild switch --flake ~/nix-config#nixos
+nixos-rebuild build --flake ~/nix-config#nixos --override-input yazi-fork /home/exp/projects/yazi_fork
+sudo -n nixos-rebuild switch --flake ~/nix-config#nixos --override-input yazi-fork /home/exp/projects/yazi_fork
 yazi --version
 ya --version
 ```
+
+Use the override because a plain `nixos-rebuild` may keep using the older locked `path` input from `~/nix-config/flake.lock`.
 
 ## Favorites in this fork
 

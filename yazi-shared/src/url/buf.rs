@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt::{Debug, Formatter}, hash::{Hash, Hasher}, path::{Path, PathBuf}, str::FromStr};
+use std::{borrow::Cow, cmp::Ordering, fmt::{Debug, Formatter}, hash::{Hash, Hasher}, path::{Path, PathBuf}, str::FromStr};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize, de::{self, IntoDeserializer}};
@@ -119,6 +119,15 @@ impl PartialEq<UrlCow<'_>> for &UrlBuf {
 // --- Hash
 impl Hash for UrlBuf {
 	fn hash<H: Hasher>(&self, state: &mut H) { self.as_url().hash(state) }
+}
+
+// --- Ord
+impl Ord for UrlBuf {
+	fn cmp(&self, other: &Self) -> Ordering { format!("{self:?}").cmp(&format!("{other:?}")) }
+}
+
+impl PartialOrd for UrlBuf {
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 
 impl UrlBuf {

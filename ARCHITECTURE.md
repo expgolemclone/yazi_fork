@@ -57,11 +57,14 @@ yazi-binding (Lua ↔ Rust バインディング)
 - `b` — 次のお気に入りへジャンプ (`favorite_arrow`)
 - `B` — 前のお気に入りへジャンプ (`favorite_arrow --previous`)
 
+b/B のトラバーサル順は JSON 登録順ではなく、パス名（= 銘柄コード）の昇順。
+
 関連ファイル:
 
 - [yazi-actor/src/mgr/favorite_arrow.rs](../yazi-actor/src/mgr/favorite_arrow.rs) — `FavoriteArrow` アクター
 - [yazi-actor/src/mgr/favorite.rs](../yazi-actor/src/mgr/favorite.rs) — `Favorite` アクター
-- [yazi-core/src/mgr/favorites.rs](../yazi-core/src/mgr/favorites.rs) — `Favorites` コレクションとサイクルトラッキング
+- [yazi-core/src/mgr/favorites.rs](../yazi-core/src/mgr/favorites.rs) — `Favorites` コレクションとサイクルトラッキング（ソート済みトラバーサル）
+- [yazi-shared/src/url/buf.rs](../yazi-shared/src/url/buf.rs) — `UrlBuf` に `Ord` / `PartialOrd` を追加
 - [yazi-parser/src/mgr/favorite_arrow.rs](../yazi-parser/src/mgr/favorite_arrow.rs) — 引数パーサー
 - [yazi-config/preset/keymap-default.toml](../yazi-config/preset/keymap-default.toml) — デフォルトキーマップ
 - [state/favorites.json](../state/favorites.json) — お気に入りリスト（Git 管理の JSON 配列）

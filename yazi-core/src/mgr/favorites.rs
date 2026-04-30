@@ -71,14 +71,15 @@ impl FavoriteCycle {
 		anchor: &UrlBuf,
 		prev: bool,
 	) -> Option<UrlBuf> {
-		let len = before.len();
-		let current = before.get_index_of(&UrlCov::from(anchor))?;
+		let sorted = before.sorted();
+		let len = sorted.len();
+		let current = sorted.iter().position(|u| UrlCov::from(*u) == UrlCov::from(anchor))?;
 
 		for step in 1..len {
 			let idx = if prev { (current + len - step) % len } else { (current + step) % len };
-			let candidate = before.get_index(idx).map(Deref::deref)?;
-			if after.contains(candidate) {
-				return Some(candidate.clone());
+			let candidate = sorted.get(idx)?;
+			if after.contains(*candidate) {
+				return Some((*candidate).clone());
 			}
 		}
 		None
@@ -96,11 +97,11 @@ impl FavoriteCycle {
 	}
 
 	fn first(favorites: &Favorites) -> Option<UrlBuf> {
-		favorites.get_index(0).map(Deref::deref).cloned()
+		favorites.sorted().into_iter().next().cloned()
 	}
 
 	fn last(favorites: &Favorites) -> Option<UrlBuf> {
-		favorites.get_index(favorites.len().checked_sub(1)?).map(Deref::deref).cloned()
+		favorites.sorted().into_iter().next_back().cloned()
 	}
 }
 
@@ -134,13 +135,21 @@ impl Favorites {
 		self.urls.contains(&UrlCov::new(url))
 	}
 
+	fn sorted(&self) -> Vec<&UrlBuf> {
+		let mut v: Vec<_> = self.urls.iter().map(Deref::deref).collect();
+		v.sort();
+		v
+	}
+
 	pub fn arrow<'a>(&self, url: impl Into<Url<'a>>, prev: bool) -> Option<&UrlBuf> {
 		if self.urls.is_empty() {
 			return None;
 		}
 
-		let len = self.urls.len();
-		let current = self.urls.get_index_of(&UrlCov::new(url));
+		let cov = UrlCov::new(url);
+		let sorted = self.sorted();
+		let len = sorted.len();
+		let current = sorted.iter().position(|u| UrlCov::from(*u) == cov);
 		let next = match (current, prev) {
 			(Some(0), true) => len - 1,
 			(Some(i), true) => i - 1,
@@ -149,7 +158,7 @@ impl Favorites {
 			(None, false) => 0,
 		};
 
-		self.urls.get_index(next).map(Deref::deref)
+		sorted.into_iter().nth(next)
 	}
 
 	pub fn set_many<'a, I, T>(&mut self, urls: I, state: bool) -> usize
@@ -294,6 +303,23 @@ mod tests {
 	#[test]
 	fn arrow_returns_none_when_empty() {
 		assert_eq!(None, Favorites::default().arrow(Path::new("/any"), false));
+	}
+
+	#[test]
+	fn arrow_uses_sorted_order_regardless_of_insertion_order() {
+		let favorites = Favorites::from_iter([
+			Path::new("/c").into(),
+			Path::new("/a").into(),
+			Path::new("/b").into(),
+		]);
+		let a: UrlBuf = Path::new("/a").into();
+		let b: UrlBuf = Path::new("/b").into();
+		let c: UrlBuf = Path::new("/c").into();
+
+		assert_eq!(Some(&b), favorites.arrow(Path::new("/a"), false));
+		assert_eq!(Some(&c), favorites.arrow(Path::new("/b"), false));
+		assert_eq!(Some(&a), favorites.arrow(Path::new("/c"), false));
+		assert_eq!(Some(&c), favorites.arrow(Path::new("/a"), true));
 	}
 
 	#[test]

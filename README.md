@@ -34,4 +34,12 @@ Use the override because a plain `nixos-rebuild` may keep using the older locked
 
 Git-managed favorites live at `state/favorites.json`, and the local deployment points `mgr.favorites_file` there via `~/nix-config/home/yazi/yazi.toml`.
 
-The default `b` / `B` favorite traversal also keeps its current cycle position after `F` updates the favorites set, so removing the currently visited favorite continues from its former neighbors instead of restarting from the first or last favorite.
+The default `b` / `B` favorite traversal also keeps its current cycle position after `e` updates the favorites set, so removing the currently visited favorite continues from its former neighbors instead of restarting from the first or last favorite.
+
+When reassigning the default `favorite` key in the `mgr` layer, the following single keys were confirmed to have no conflicts with existing bindings or multi-key prefixes:
+
+- 小文字: `e` `i` `u`
+- 大文字: `A` `C` `E` `I` `M` `R` `T` `U` `W`
+- 数字: `0`
+- 記号: `` ` `` `=` `\` `'` `!` `@` `#` `$` `%` `^` `&` `*` `(` `)` `+` `|` `"` `<` `>`
+- 名前付きキー: `<Backspace>` `<Home>` `<End>` `<BackTab>` `<Delete>` `<Insert>` `<F2>` から `<F19>`

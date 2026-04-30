@@ -27,7 +27,9 @@ impl Actor for Favorite {
 			succ!();
 		}
 
-		let mut favorites = cx.mgr.favorites.clone();
+		let before = cx.mgr.favorites.clone();
+		let mut favorites = before.clone();
+		let mut cycle = cx.mgr.favorite_cycle.clone();
 		let unique_targets: IndexSet<_> = targets.iter().cloned().collect();
 		let before_on = unique_targets.iter().filter(|url| favorites.contains(url)).count();
 		let changed = match form.state {
@@ -40,9 +42,11 @@ impl Actor for Favorite {
 		let after_on = unique_targets.iter().filter(|url| favorites.contains(url)).count();
 		let added = after_on.saturating_sub(before_on);
 		let removed = before_on.saturating_sub(after_on);
+		cycle.reconcile(&before, &favorites);
 
 		FavoritesIo::save(&favorites)?;
 		cx.mgr.favorites = favorites;
+		cx.mgr.favorite_cycle = cycle;
 		act!(notify:push, cx, MessageOpt {
 			title:   "Favorite".to_owned(),
 			content: favorite_message(unique_targets.len(), added, removed),

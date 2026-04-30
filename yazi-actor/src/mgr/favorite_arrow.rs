@@ -20,7 +20,16 @@ impl Actor for FavoriteArrow {
 
 	fn act(cx: &mut Ctx, form: Self::Form) -> Result<Data> {
 		let current = current_target(cx);
-		let Some(target) = cx.mgr.favorites.arrow(&current, form.prev).cloned() else {
+		let target = if cx.mgr.favorite_cycle.matches(&current) {
+			cx.mgr
+				.favorite_cycle
+				.target(form.prev)
+				.cloned()
+				.or_else(|| cx.mgr.favorites.arrow(&current, form.prev).cloned())
+		} else {
+			cx.mgr.favorites.arrow(&current, form.prev).cloned()
+		};
+		let Some(target) = target else {
 			act!(notify:push, cx, MessageOpt {
 				title:   "Favorite".to_owned(),
 				content: "No favorites yet".to_owned(),
@@ -30,12 +39,16 @@ impl Actor for FavoriteArrow {
 			succ!();
 		};
 
-		act!(mgr:reveal, cx, RevealForm {
+		let data = act!(mgr:reveal, cx, RevealForm {
 			target,
 			raw: true,
 			source: CdSource::Reveal,
 			no_dummy: true,
-		})
+		})?;
+		let landed = current_target(cx);
+		let favorites = cx.mgr.favorites.clone();
+		cx.mgr.favorite_cycle.advance(&favorites, landed);
+		Ok(data)
 	}
 }
 
@@ -50,9 +63,10 @@ mod tests {
 	use yazi_boot::BOOT;
 	use yazi_core::{Core, tab::Folder};
 	use yazi_fs::{File, FolderStage};
+	use yazi_shared::path::PathBufDyn;
 
 	use super::*;
-	use crate::mgr::test_support::init_test_env;
+	use crate::mgr::{Hover, test_support::init_test_env};
 
 	fn loaded_folder(dir: &Path, files: Vec<File>, cursor: usize) -> Folder {
 		let mut folder = Folder::from(dir.to_path_buf());
@@ -153,6 +167,89 @@ mod tests {
 		FavoriteArrow::act(&mut cx, FavoriteArrowForm { prev: true }).unwrap();
 
 		assert_eq!(Some(&UrlBuf::from(last)), cx.hovered().map(|hovered| &hovered.url));
+	}
+
+	#[tokio::test(flavor = "current_thread")]
+	async fn favorite_arrow_act_keeps_cycle_after_current_favorite_is_removed() {
+		init_test_env();
+
+		let dir = PathBuf::from("/tmp/yazi-favorite-arrow-cycle");
+		let a = dir.join("a.txt");
+		let b = dir.join("b.txt");
+		let c = dir.join("c.txt");
+		let d = dir.join("d.txt");
+
+		let mut core = Core::make();
+		core.mgr.favorites = [a.clone().into(), b.clone().into(), c.clone().into(), d.clone().into()]
+			.into_iter()
+			.collect();
+		core.mgr.tabs[0].current = loaded_folder(
+			&dir,
+			vec![
+				File::from_dummy(&a, None),
+				File::from_dummy(&b, None),
+				File::from_dummy(&c, None),
+				File::from_dummy(&d, None),
+			],
+			0,
+		);
+
+		let mut term = None;
+		let mut cx = Ctx::active(&mut core, &mut term);
+
+		FavoriteArrow::act(&mut cx, FavoriteArrowForm { prev: false }).unwrap();
+		FavoriteArrow::act(&mut cx, FavoriteArrowForm { prev: false }).unwrap();
+		assert_eq!(Some(&UrlBuf::from(c.clone())), cx.hovered().map(|hovered| &hovered.url));
+
+		let before = cx.mgr.favorites.clone();
+		let mut after = before.clone();
+		assert_eq!(1, after.toggle_many([c.as_path()]));
+		cx.mgr.favorite_cycle.reconcile(&before, &after);
+		cx.mgr.favorites = after;
+		assert!(!cx.mgr.favorites.contains(&c));
+
+		FavoriteArrow::act(&mut cx, FavoriteArrowForm { prev: false }).unwrap();
+		assert_eq!(Some(&UrlBuf::from(d)), cx.hovered().map(|hovered| &hovered.url));
+
+		FavoriteArrow::act(&mut cx, FavoriteArrowForm { prev: true }).unwrap();
+		assert_eq!(Some(&UrlBuf::from(b)), cx.hovered().map(|hovered| &hovered.url));
+	}
+
+	#[tokio::test(flavor = "current_thread")]
+	async fn favorite_arrow_act_falls_back_to_hovered_file_after_manual_move() {
+		init_test_env();
+
+		let dir = PathBuf::from("/tmp/yazi-favorite-arrow-manual");
+		let a = dir.join("a.txt");
+		let b = dir.join("b.txt");
+		let c = dir.join("c.txt");
+		let x = dir.join("x.txt");
+
+		let mut core = Core::make();
+		core.mgr.favorites =
+			[a.clone().into(), b.clone().into(), c.clone().into()].into_iter().collect();
+		core.mgr.tabs[0].current = loaded_folder(
+			&dir,
+			vec![
+				File::from_dummy(&a, None),
+				File::from_dummy(&b, None),
+				File::from_dummy(&c, None),
+				File::from_dummy(&x, None),
+			],
+			0,
+		);
+
+		let mut term = None;
+		let mut cx = Ctx::active(&mut core, &mut term);
+
+		FavoriteArrow::act(&mut cx, FavoriteArrowForm { prev: false }).unwrap();
+		assert_eq!(Some(&UrlBuf::from(b.clone())), cx.hovered().map(|hovered| &hovered.url));
+
+		Hover::act(&mut cx, Some(PathBufDyn::from(Path::new("x.txt"))).into()).unwrap();
+		assert_eq!(Some(&UrlBuf::from(x.clone())), cx.hovered().map(|hovered| &hovered.url));
+
+		FavoriteArrow::act(&mut cx, FavoriteArrowForm { prev: false }).unwrap();
+		assert_eq!(Some(&UrlBuf::from(a)), cx.hovered().map(|hovered| &hovered.url));
 	}
 
 	#[tokio::test(flavor = "current_thread")]

@@ -33,3 +33,5 @@ Use the override because a plain `nixos-rebuild` may keep using the older locked
 ## Favorites in this fork
 
 Git-managed favorites live at `state/favorites.json`, and the local deployment points `mgr.favorites_file` there via `~/nix-config/home/yazi/yazi.toml`.
+
+The default `b` / `B` favorite traversal also keeps its current cycle position after `F` updates the favorites set, so removing the currently visited favorite continues from its former neighbors instead of restarting from the first or last favorite.

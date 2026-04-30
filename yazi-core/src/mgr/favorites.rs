@@ -2,7 +2,107 @@ use std::ops::Deref;
 
 use indexmap::IndexSet;
 use yazi_fs::FilesOp;
-use yazi_shared::url::{Url, UrlBuf, UrlBufCov, UrlCov};
+use yazi_shared::url::{Url, UrlBuf, UrlBufCov, UrlCov, UrlLike};
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct FavoriteCycle {
+	anchor: Option<UrlBuf>,
+	prev: Option<UrlBuf>,
+	next: Option<UrlBuf>,
+}
+
+impl FavoriteCycle {
+	pub fn matches(&self, url: &UrlBuf) -> bool {
+		self.anchor.as_ref().is_some_and(|anchor| anchor == url)
+	}
+
+	pub fn target(&self, prev: bool) -> Option<&UrlBuf> {
+		if prev { self.prev.as_ref() } else { self.next.as_ref() }
+	}
+
+	pub fn advance(&mut self, favorites: &Favorites, anchor: UrlBuf) {
+		self.anchor = Some(anchor);
+		self.recenter(favorites);
+	}
+
+	pub fn reconcile(&mut self, before: &Favorites, after: &Favorites) {
+		let Some(anchor) = self.anchor.clone() else { return };
+		if after.is_empty() {
+			self.prev = None;
+			self.next = None;
+			return;
+		}
+
+		if after.contains(&anchor) {
+			self.recenter(after);
+			return;
+		}
+		if before.contains(&anchor) {
+			self.prev = Self::survivor(before, after, &anchor, true).or_else(|| Self::last(after));
+			self.next = Self::survivor(before, after, &anchor, false).or_else(|| Self::first(after));
+			return;
+		}
+
+		self.prev =
+			self.prev.as_ref().filter(|url| after.contains(*url)).cloned().or_else(|| Self::last(after));
+		self.next =
+			self.next.as_ref().filter(|url| after.contains(*url)).cloned().or_else(|| Self::first(after));
+	}
+
+	pub fn rename_refs(&mut self, op: &FilesOp) {
+		for slot in [&mut self.anchor, &mut self.prev, &mut self.next] {
+			let Some(url) = slot.as_ref() else { continue };
+			if let Some(new) = Self::renamed(url, op) {
+				*slot = Some(new);
+			}
+		}
+	}
+
+	fn recenter(&mut self, favorites: &Favorites) {
+		let Some(anchor) = self.anchor.as_ref() else { return };
+
+		self.prev = favorites.arrow(anchor, true).cloned();
+		self.next = favorites.arrow(anchor, false).cloned();
+	}
+
+	fn survivor(
+		before: &Favorites,
+		after: &Favorites,
+		anchor: &UrlBuf,
+		prev: bool,
+	) -> Option<UrlBuf> {
+		let len = before.len();
+		let current = before.get_index_of(&UrlCov::from(anchor))?;
+
+		for step in 1..len {
+			let idx = if prev { (current + len - step) % len } else { (current + step) % len };
+			let candidate = before.get_index(idx).map(Deref::deref)?;
+			if after.contains(candidate) {
+				return Some(candidate.clone());
+			}
+		}
+		None
+	}
+
+	fn renamed(url: &UrlBuf, op: &FilesOp) -> Option<UrlBuf> {
+		let map = match op {
+			FilesOp::Updating(cwd, map) | FilesOp::Upserting(cwd, map) => Some((cwd, map)),
+			_ => None,
+		}?;
+
+		map.1.iter().filter(|&(urn, file)| urn != &file.urn()).find_map(|(urn, file)| {
+			map.0.try_join(urn).ok().filter(|old| old == url).map(|_| file.url_owned())
+		})
+	}
+
+	fn first(favorites: &Favorites) -> Option<UrlBuf> {
+		favorites.get_index(0).map(Deref::deref).cloned()
+	}
+
+	fn last(favorites: &Favorites) -> Option<UrlBuf> {
+		favorites.get_index(favorites.len().checked_sub(1)?).map(Deref::deref).cloned()
+	}
+}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Favorites {
@@ -219,5 +319,104 @@ mod tests {
 		assert!(favorites.apply_op(&FilesOp::Deleting(Path::new("/").into(), urns)));
 		assert!(!favorites.contains(Path::new("/gone")));
 		assert!(favorites.contains(Path::new("/keep")));
+	}
+
+	#[test]
+	fn cycle_keeps_neighbors_when_anchor_is_removed() {
+		let before = Favorites::from_iter([
+			Path::new("/a").into(),
+			Path::new("/b").into(),
+			Path::new("/c").into(),
+			Path::new("/d").into(),
+		]);
+		let after = Favorites::from_iter([
+			Path::new("/a").into(),
+			Path::new("/b").into(),
+			Path::new("/d").into(),
+		]);
+		let removed: UrlBuf = Path::new("/c").into();
+		let b: UrlBuf = Path::new("/b").into();
+		let d: UrlBuf = Path::new("/d").into();
+
+		let mut cycle = FavoriteCycle::default();
+		cycle.advance(&before, removed.clone());
+		cycle.reconcile(&before, &after);
+
+		assert!(cycle.matches(&removed));
+		assert_eq!(Some(&b), cycle.target(true));
+		assert_eq!(Some(&d), cycle.target(false));
+	}
+
+	#[test]
+	fn cycle_recenters_when_anchor_stays_favorited() {
+		let before = Favorites::from_iter([
+			Path::new("/a").into(),
+			Path::new("/b").into(),
+			Path::new("/c").into(),
+		]);
+		let after = Favorites::from_iter([Path::new("/a").into(), Path::new("/b").into()]);
+		let b: UrlBuf = Path::new("/b").into();
+		let a: UrlBuf = Path::new("/a").into();
+
+		let mut cycle = FavoriteCycle::default();
+		cycle.advance(&before, b.clone());
+		cycle.reconcile(&before, &after);
+
+		assert!(cycle.matches(&b));
+		assert_eq!(Some(&a), cycle.target(true));
+		assert_eq!(Some(&a), cycle.target(false));
+	}
+
+	#[test]
+	fn cycle_renames_anchor_before_recentering() {
+		let before = Favorites::from_iter([Path::new("/a").into(), Path::new("/b").into()]);
+		let after = Favorites::from_iter([Path::new("/a").into(), Path::new("/b2").into()]);
+		let b: UrlBuf = Path::new("/b").into();
+		let b2: UrlBuf = Path::new("/b2").into();
+		let a: UrlBuf = Path::new("/a").into();
+
+		let mut files = HashMap::new();
+		files.insert(PathBufDyn::from(Path::new("b")), File::from_dummy(Path::new("/b2"), None));
+
+		let mut cycle = FavoriteCycle::default();
+		cycle.advance(&before, b);
+		cycle.rename_refs(&FilesOp::Upserting(Path::new("/").into(), files));
+		cycle.reconcile(&before, &after);
+
+		assert!(cycle.matches(&b2));
+		assert_eq!(Some(&a), cycle.target(true));
+		assert_eq!(Some(&a), cycle.target(false));
+	}
+
+	#[test]
+	fn cycle_renames_neighbors_when_anchor_is_already_gone() {
+		let before = Favorites::from_iter([
+			Path::new("/a").into(),
+			Path::new("/b").into(),
+			Path::new("/d").into(),
+		]);
+		let after = Favorites::from_iter([
+			Path::new("/a").into(),
+			Path::new("/b").into(),
+			Path::new("/d2").into(),
+		]);
+		let c: UrlBuf = Path::new("/c").into();
+		let b: UrlBuf = Path::new("/b").into();
+		let d2: UrlBuf = Path::new("/d2").into();
+
+		let mut files = HashMap::new();
+		files.insert(PathBufDyn::from(Path::new("d")), File::from_dummy(Path::new("/d2"), None));
+
+		let mut cycle = FavoriteCycle {
+			anchor: Some(c.clone()),
+			prev: Some(b.clone()),
+			next: Some(Path::new("/d").into()),
+		};
+		cycle.rename_refs(&FilesOp::Upserting(Path::new("/").into(), files));
+		cycle.reconcile(&before, &after);
+
+		assert!(cycle.matches(&c));
+		assert_eq!(Some(&b), cycle.target(true));
+		assert_eq!(Some(&d2), cycle.target(false));
 	}
 }

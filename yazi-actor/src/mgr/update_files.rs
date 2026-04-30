@@ -23,10 +23,14 @@ impl Actor for UpdateFiles {
 		let revision = cx.current().files.revision;
 		let linked: Vec<_> = LINKED.read().from_dir(form.op.cwd()).map(|u| form.op.chdir(u)).collect();
 		let mut favorites = cx.mgr.favorites.clone();
+		let mut cycle = cx.mgr.favorite_cycle.clone();
 
 		for op in [form.op].into_iter().chain(linked) {
+			let before = favorites.clone();
 			cx.mgr.yanked.apply_op(&op);
+			cycle.rename_refs(&op);
 			favorites.apply_op(&op);
+			cycle.reconcile(&before, &favorites);
 			Self::update_tab(cx, op).ok();
 		}
 
@@ -34,7 +38,10 @@ impl Actor for UpdateFiles {
 		if favorites != cx.mgr.favorites {
 			FavoritesIo::save(&favorites)?;
 			cx.mgr.favorites = favorites;
+			cx.mgr.favorite_cycle = cycle;
 			render!();
+		} else if cycle != cx.mgr.favorite_cycle {
+			cx.mgr.favorite_cycle = cycle;
 		}
 		act!(mgr:hidden, cx).ok();
 		act!(mgr:sort, cx).ok();

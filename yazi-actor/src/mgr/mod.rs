@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod test_support;
+
 yazi_macro::mod_flat!(
 	arrow
 	back
@@ -13,6 +16,7 @@ yazi_macro::mod_flat!(
 	enter
 	escape
 	favorite
+	favorite_arrow
 	favorites_io
 	filter
 	filter_do

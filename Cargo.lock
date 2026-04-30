@@ -5790,6 +5790,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
+ "yazi-adapter",
  "yazi-binding",
  "yazi-boot",
  "yazi-config",

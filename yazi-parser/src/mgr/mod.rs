@@ -8,6 +8,7 @@ yazi_macro::mod_flat!(
 	download
 	escape
 	favorite
+	favorite_arrow
 	filter
 	find
 	find_arrow

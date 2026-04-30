@@ -45,6 +45,7 @@ pub enum Spark<'a> {
 	EscapeSelect(crate::VoidForm),
 	EscapeVisual(crate::VoidForm),
 	Favorite(crate::mgr::FavoriteForm),
+	FavoriteArrow(crate::mgr::FavoriteArrowForm),
 	Filter(crate::mgr::FilterForm),
 	FilterDo(crate::mgr::FilterForm),
 	Find(crate::mgr::FindForm),
@@ -231,6 +232,7 @@ impl<'a> IntoLua for Spark<'a> {
 			Self::EscapeSelect(b) => b.into_lua(lua),
 			Self::EscapeVisual(b) => b.into_lua(lua),
 			Self::Favorite(b) => b.into_lua(lua),
+			Self::FavoriteArrow(b) => b.into_lua(lua),
 			Self::Filter(b) => b.into_lua(lua),
 			Self::FilterDo(b) => b.into_lua(lua),
 			Self::Find(b) => b.into_lua(lua),
@@ -398,6 +400,7 @@ try_from_spark!(crate::mgr::DisplaceDoForm, mgr:displace_do);
 try_from_spark!(crate::mgr::DownloadForm, mgr:download);
 try_from_spark!(crate::mgr::EscapeForm, mgr:escape);
 try_from_spark!(crate::mgr::FavoriteForm, mgr:favorite);
+try_from_spark!(crate::mgr::FavoriteArrowForm, mgr:favorite_arrow);
 try_from_spark!(crate::mgr::FilterForm, mgr:filter, mgr:filter_do);
 try_from_spark!(crate::mgr::FindArrowForm, mgr:find_arrow);
 try_from_spark!(crate::mgr::FindDoForm, mgr:find_do);

@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/):
 
 ### Added
 
+- New `favorite_arrow` action and default `b` / `B` keybindings to jump through favorites in saved order
 - Custom tab name ([#3666])
 - New `--in` for `search` action to set search directory ([#3696])
 - Hover cursor over the new file after copying/cutting/linking/hardlinking/extracting ([#3846], [#3854])

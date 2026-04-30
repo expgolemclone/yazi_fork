@@ -80,52 +80,16 @@ fn favorite_message(total: usize, added: usize, removed: usize) -> String {
 #[cfg(test)]
 mod tests {
 	use std::{
-		env, fs,
+		fs,
 		path::{Path, PathBuf},
-		sync::Once,
 		time::{SystemTime, UNIX_EPOCH},
 	};
 
 	use super::*;
+	use crate::mgr::test_support::{configured_favorites_file, init_test_env};
 	use yazi_boot::BOOT;
 	use yazi_core::Core;
 	use yazi_fs::{File, FolderStage};
-
-	fn test_root() -> PathBuf {
-		env::temp_dir().join("yazi-actor-favorite-tests")
-	}
-
-	fn configured_favorites_file() -> PathBuf {
-		test_root().join("managed/favorites.json")
-	}
-
-	fn init_test_env() {
-		static ONCE: Once = Once::new();
-
-		ONCE.call_once(|| {
-			let root = test_root();
-			let _ = fs::remove_dir_all(&root);
-			fs::create_dir_all(root.join("config/yazi")).unwrap();
-			fs::create_dir_all(root.join("state")).unwrap();
-			let favorites_file = configured_favorites_file().to_string_lossy().replace('\\', "\\\\");
-			fs::write(
-				root.join("config/yazi/yazi.toml"),
-				format!("[mgr]\nfavorites_file = \"{favorites_file}\"\n"),
-			)
-			.unwrap();
-
-			unsafe {
-				env::set_var("XDG_CONFIG_HOME", root.join("config"));
-				env::set_var("XDG_STATE_HOME", root.join("state"));
-			}
-
-			yazi_shared::init_tests();
-			yazi_fs::init_tests();
-			yazi_config::init().unwrap();
-			yazi_boot::init_default();
-			yazi_watcher::init();
-		});
-	}
 
 	#[test]
 	fn resolve_targets_prefers_explicit_urls() {

@@ -12,7 +12,9 @@ pub(super) struct Executor<'a> {
 
 impl<'a> Executor<'a> {
 	#[inline]
-	pub(super) fn new(app: &'a mut App) -> Self { Self { app } }
+	pub(super) fn new(app: &'a mut App) -> Self {
+		Self { app }
+	}
 
 	pub(super) fn execute(&mut self, action: ActionCow) -> Result<Data> {
 		match action.layer {
@@ -31,7 +33,9 @@ impl<'a> Executor<'a> {
 		}
 	}
 
-	fn null(&mut self, _action: ActionCow) -> Result<Data> { succ!() }
+	fn null(&mut self, _action: ActionCow) -> Result<Data> {
+		succ!()
+	}
 
 	fn app(&mut self, mut action: ActionCow) -> Result<Data> {
 		let cx = &mut Ctx::new(&action, &mut self.app.core, &mut self.app.term)?;
@@ -110,6 +114,7 @@ impl<'a> Executor<'a> {
 		// Toggle
 		on!(toggle);
 		on!(favorite);
+		on!(favorite_arrow);
 		on!(toggle_all);
 		on!(visual_mode);
 

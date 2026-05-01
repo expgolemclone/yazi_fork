@@ -7,8 +7,8 @@
 keymap = [
 	{ on = "<Esc>", run = "escape",             desc = "Exit visual mode, clear selection, or cancel search" },
 	{ on = "<C-[>", run = "escape",             desc = "Exit visual mode, clear selection, or cancel search" },
-	{ on = "q",     run = "quit",               desc = "Quit the process" },
-	{ on = "Q",     run = "quit --no-cwd-file", desc = "Quit without outputting cwd-file" },
+	{ on = "q",     run = "quarter_arrow --previous", desc = "Jump to the same ticker in the previous quarter" },
+	{ on = "Q",     run = "quarter_arrow",            desc = "Jump to the same ticker in the next quarter" },
 	{ on = "<C-c>", run = "close",              desc = "Close the current tab, or quit if it's last" },
 	{ on = "<C-z>", run = "suspend",            desc = "Suspend the process" },
 

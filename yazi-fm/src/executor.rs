@@ -115,6 +115,7 @@ impl<'a> Executor<'a> {
 		on!(toggle);
 		on!(favorite);
 		on!(favorite_arrow);
+		on!(quarter_arrow);
 		on!(toggle_all);
 		on!(visual_mode);
 

@@ -22,6 +22,7 @@ yazi_macro::mod_flat!(
 	open_do
 	paste
 	peek
+	quarter_arrow
 	remove
 	rename
 	reveal

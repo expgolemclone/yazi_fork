@@ -24,9 +24,13 @@ impl Actor for QuarterArrow {
 	const NAME: &str = "quarter_arrow";
 
 	fn act(cx: &mut Ctx, form: Self::Form) -> Result<Data> {
-		let Some(path) = cx.hovered().and_then(|hovered| hovered.url.clone().into_local()) else {
+		let Some(current) = cx.hovered().map(|hovered| hovered.url.clone()) else {
 			succ!();
 		};
+		let Some(path) = current.clone().into_local() else {
+			succ!();
+		};
+		let preserving_cycle = cx.mgr.favorite_cycle.matches(&current);
 
 		match resolve_target(&path, form.prev)? {
 			Target::Ignore => succ!(),
@@ -34,26 +38,37 @@ impl Actor for QuarterArrow {
 				notify(cx, content)?;
 				succ!();
 			}
-			Target::Reveal(target) => act!(mgr:reveal, cx, RevealForm {
-				target,
-				raw: true,
-				source: CdSource::Reveal,
-				no_dummy: true,
-			}),
+			Target::Reveal(target) => {
+				let data = act!(mgr:reveal, cx, RevealForm {
+					target,
+					raw: true,
+					source: CdSource::Reveal,
+					no_dummy: true,
+				})?;
+				if preserving_cycle {
+					let landed = current_target(cx);
+					cx.mgr.favorite_cycle.relocate(landed);
+				}
+				Ok(data)
+			}
 		}
 	}
 }
 
+fn current_target(cx: &Ctx) -> UrlBuf {
+	cx.hovered().map(|hovered| hovered.url.clone()).unwrap_or_else(|| cx.cwd().clone())
+}
+
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct QuarterKey {
-	year:    u16,
+	year: u16,
 	quarter: u8,
 }
 
 struct QuarterPath {
 	data_root: PathBuf,
-	current:   QuarterKey,
-	filename:  OsString,
+	current: QuarterKey,
+	filename: OsString,
 }
 
 enum Target {
@@ -67,8 +82,9 @@ fn resolve_target(path: &Path, prev: bool) -> Result<Target> {
 		return Ok(Target::Ignore);
 	};
 
-	let quarters = quarter_dirs(&current.data_root)
-		.with_context(|| format!("failed to read quarter directories under {}", current.data_root.display()))?;
+	let quarters = quarter_dirs(&current.data_root).with_context(|| {
+		format!("failed to read quarter directories under {}", current.data_root.display())
+	})?;
 	let Some(index) = quarters.iter().position(|(key, _)| *key == current.current) else {
 		return Ok(Target::Ignore);
 	};
@@ -164,10 +180,11 @@ mod tests {
 
 	use yazi_core::{Core, tab::Folder};
 	use yazi_fs::{File, FolderStage};
+	use yazi_parser::mgr::FavoriteArrowForm;
 	use yazi_shared::url::UrlBuf;
 
 	use super::*;
-	use crate::mgr::test_support::init_test_env;
+	use crate::mgr::{FavoriteArrow, test_support::init_test_env};
 
 	fn loaded_folder(dir: &Path, files: Vec<File>, cursor: usize) -> Folder {
 		let mut folder = Folder::from(dir.to_path_buf());
@@ -201,10 +218,12 @@ mod tests {
 		let target_dir = target.parent().unwrap();
 
 		let mut core = Core::make();
-		core.mgr.tabs[0].current = loaded_folder(current_dir, vec![File::from_dummy(&current, None)], 0);
-		core.mgr.tabs[0]
-			.history
-			.insert(target_dir.to_path_buf().into(), loaded_folder(target_dir, vec![File::from_dummy(&target, None)], 0));
+		core.mgr.tabs[0].current =
+			loaded_folder(current_dir, vec![File::from_dummy(&current, None)], 0);
+		core.mgr.tabs[0].history.insert(
+			target_dir.to_path_buf().into(),
+			loaded_folder(target_dir, vec![File::from_dummy(&target, None)], 0),
+		);
 
 		let mut term = None;
 		let mut cx = Ctx::active(&mut core, &mut term);
@@ -229,10 +248,12 @@ mod tests {
 		let target_dir = target.parent().unwrap();
 
 		let mut core = Core::make();
-		core.mgr.tabs[0].current = loaded_folder(current_dir, vec![File::from_dummy(&current, None)], 0);
-		core.mgr.tabs[0]
-			.history
-			.insert(target_dir.to_path_buf().into(), loaded_folder(target_dir, vec![File::from_dummy(&target, None)], 0));
+		core.mgr.tabs[0].current =
+			loaded_folder(current_dir, vec![File::from_dummy(&current, None)], 0);
+		core.mgr.tabs[0].history.insert(
+			target_dir.to_path_buf().into(),
+			loaded_folder(target_dir, vec![File::from_dummy(&target, None)], 0),
+		);
 
 		let mut term = None;
 		let mut cx = Ctx::active(&mut core, &mut term);
@@ -257,10 +278,12 @@ mod tests {
 		let target_dir = target.parent().unwrap();
 
 		let mut core = Core::make();
-		core.mgr.tabs[0].current = loaded_folder(current_dir, vec![File::from_dummy(&current, None)], 0);
-		core.mgr.tabs[0]
-			.history
-			.insert(target_dir.to_path_buf().into(), loaded_folder(target_dir, vec![File::from_dummy(&target, None)], 0));
+		core.mgr.tabs[0].current =
+			loaded_folder(current_dir, vec![File::from_dummy(&current, None)], 0);
+		core.mgr.tabs[0].history.insert(
+			target_dir.to_path_buf().into(),
+			loaded_folder(target_dir, vec![File::from_dummy(&target, None)], 0),
+		);
 
 		let mut term = None;
 		let mut cx = Ctx::active(&mut core, &mut term);
@@ -268,6 +291,94 @@ mod tests {
 		QuarterArrow::act(&mut cx, QuarterArrowForm { prev: false }).unwrap();
 
 		assert_eq!(Some(&UrlBuf::from(target)), cx.hovered().map(|hovered| &hovered.url));
+	}
+
+	#[tokio::test(flavor = "current_thread")]
+	async fn quarter_arrow_act_keeps_favorite_cycle_for_next_favorite() {
+		init_test_env();
+
+		let root = unique_root("favorite-cycle-next");
+		let quarter_1 = root.join("data/2026_1");
+		let quarter_2 = root.join("data/2026_2");
+		let a = quarter_1.join("1301.pdf");
+		let b = quarter_1.join("2802.pdf");
+		let c = quarter_1.join("7203.pdf");
+		let b_next = quarter_2.join("2802.pdf");
+		create_pdf(&a);
+		create_pdf(&b);
+		create_pdf(&c);
+		create_pdf(&b_next);
+
+		let mut core = Core::make();
+		core.mgr.favorites =
+			[a.clone().into(), b.clone().into(), c.clone().into()].into_iter().collect();
+		core.mgr.tabs[0].current = loaded_folder(
+			&quarter_1,
+			vec![File::from_dummy(&a, None), File::from_dummy(&b, None), File::from_dummy(&c, None)],
+			0,
+		);
+		core.mgr.tabs[0].history.insert(
+			quarter_2.clone().into(),
+			loaded_folder(&quarter_2, vec![File::from_dummy(&b_next, None)], 0),
+		);
+
+		let mut term = None;
+		let mut cx = Ctx::active(&mut core, &mut term);
+
+		FavoriteArrow::act(&mut cx, FavoriteArrowForm { prev: false }).unwrap();
+		assert_eq!(Some(&UrlBuf::from(b.clone())), cx.hovered().map(|hovered| &hovered.url));
+
+		QuarterArrow::act(&mut cx, QuarterArrowForm { prev: false }).unwrap();
+		assert_eq!(&UrlBuf::from(quarter_2.clone()), cx.cwd());
+		assert_eq!(Some(&UrlBuf::from(b_next)), cx.hovered().map(|hovered| &hovered.url));
+
+		FavoriteArrow::act(&mut cx, FavoriteArrowForm { prev: false }).unwrap();
+		assert_eq!(&UrlBuf::from(quarter_1), cx.cwd());
+		assert_eq!(Some(&UrlBuf::from(c)), cx.hovered().map(|hovered| &hovered.url));
+	}
+
+	#[tokio::test(flavor = "current_thread")]
+	async fn quarter_arrow_act_keeps_favorite_cycle_for_previous_favorite() {
+		init_test_env();
+
+		let root = unique_root("favorite-cycle-previous");
+		let quarter_1 = root.join("data/2026_1");
+		let quarter_2 = root.join("data/2026_2");
+		let a = quarter_1.join("1301.pdf");
+		let b = quarter_1.join("2802.pdf");
+		let c = quarter_1.join("7203.pdf");
+		let b_next = quarter_2.join("2802.pdf");
+		create_pdf(&a);
+		create_pdf(&b);
+		create_pdf(&c);
+		create_pdf(&b_next);
+
+		let mut core = Core::make();
+		core.mgr.favorites =
+			[a.clone().into(), b.clone().into(), c.clone().into()].into_iter().collect();
+		core.mgr.tabs[0].current = loaded_folder(
+			&quarter_1,
+			vec![File::from_dummy(&a, None), File::from_dummy(&b, None), File::from_dummy(&c, None)],
+			0,
+		);
+		core.mgr.tabs[0].history.insert(
+			quarter_2.clone().into(),
+			loaded_folder(&quarter_2, vec![File::from_dummy(&b_next, None)], 0),
+		);
+
+		let mut term = None;
+		let mut cx = Ctx::active(&mut core, &mut term);
+
+		FavoriteArrow::act(&mut cx, FavoriteArrowForm { prev: false }).unwrap();
+		assert_eq!(Some(&UrlBuf::from(b.clone())), cx.hovered().map(|hovered| &hovered.url));
+
+		QuarterArrow::act(&mut cx, QuarterArrowForm { prev: false }).unwrap();
+		assert_eq!(&UrlBuf::from(quarter_2.clone()), cx.cwd());
+		assert_eq!(Some(&UrlBuf::from(b_next)), cx.hovered().map(|hovered| &hovered.url));
+
+		FavoriteArrow::act(&mut cx, FavoriteArrowForm { prev: true }).unwrap();
+		assert_eq!(&UrlBuf::from(quarter_1), cx.cwd());
+		assert_eq!(Some(&UrlBuf::from(a)), cx.hovered().map(|hovered| &hovered.url));
 	}
 
 	#[tokio::test(flavor = "current_thread")]
@@ -282,7 +393,8 @@ mod tests {
 		let current_dir = current.parent().unwrap();
 
 		let mut core = Core::make();
-		core.mgr.tabs[0].current = loaded_folder(current_dir, vec![File::from_dummy(&current, None)], 0);
+		core.mgr.tabs[0].current =
+			loaded_folder(current_dir, vec![File::from_dummy(&current, None)], 0);
 
 		let mut term = None;
 		let mut cx = Ctx::active(&mut core, &mut term);
@@ -306,7 +418,8 @@ mod tests {
 		let current_dir = current.parent().unwrap();
 
 		let mut core = Core::make();
-		core.mgr.tabs[0].current = loaded_folder(current_dir, vec![File::from_dummy(&current, None)], 0);
+		core.mgr.tabs[0].current =
+			loaded_folder(current_dir, vec![File::from_dummy(&current, None)], 0);
 
 		let mut term = None;
 		let mut cx = Ctx::active(&mut core, &mut term);

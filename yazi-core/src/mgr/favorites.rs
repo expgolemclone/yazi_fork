@@ -7,13 +7,14 @@ use yazi_shared::url::{Url, UrlBuf, UrlBufCov, UrlCov, UrlLike};
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct FavoriteCycle {
 	anchor: Option<UrlBuf>,
+	current: Option<UrlBuf>,
 	prev: Option<UrlBuf>,
 	next: Option<UrlBuf>,
 }
 
 impl FavoriteCycle {
 	pub fn matches(&self, url: &UrlBuf) -> bool {
-		self.anchor.as_ref().is_some_and(|anchor| anchor == url)
+		self.current.as_ref().or(self.anchor.as_ref()).is_some_and(|current| current == url)
 	}
 
 	pub fn target(&self, prev: bool) -> Option<&UrlBuf> {
@@ -21,8 +22,15 @@ impl FavoriteCycle {
 	}
 
 	pub fn advance(&mut self, favorites: &Favorites, anchor: UrlBuf) {
+		self.current = Some(anchor.clone());
 		self.anchor = Some(anchor);
 		self.recenter(favorites);
+	}
+
+	pub fn relocate(&mut self, current: UrlBuf) {
+		if self.anchor.is_some() {
+			self.current = Some(current);
+		}
 	}
 
 	pub fn reconcile(&mut self, before: &Favorites, after: &Favorites) {
@@ -50,7 +58,7 @@ impl FavoriteCycle {
 	}
 
 	pub fn rename_refs(&mut self, op: &FilesOp) {
-		for slot in [&mut self.anchor, &mut self.prev, &mut self.next] {
+		for slot in [&mut self.anchor, &mut self.current, &mut self.prev, &mut self.next] {
 			let Some(url) = slot.as_ref() else { continue };
 			if let Some(new) = Self::renamed(url, op) {
 				*slot = Some(new);
@@ -374,6 +382,28 @@ mod tests {
 	}
 
 	#[test]
+	fn cycle_matches_relocated_current_without_recentering() {
+		let favorites = Favorites::from_iter([
+			Path::new("/a").into(),
+			Path::new("/b").into(),
+			Path::new("/c").into(),
+		]);
+		let a: UrlBuf = Path::new("/a").into();
+		let b: UrlBuf = Path::new("/b").into();
+		let b2: UrlBuf = Path::new("/alt/b").into();
+		let c: UrlBuf = Path::new("/c").into();
+
+		let mut cycle = FavoriteCycle::default();
+		cycle.advance(&favorites, b.clone());
+		cycle.relocate(b2.clone());
+
+		assert!(!cycle.matches(&b));
+		assert!(cycle.matches(&b2));
+		assert_eq!(Some(&a), cycle.target(true));
+		assert_eq!(Some(&c), cycle.target(false));
+	}
+
+	#[test]
 	fn cycle_recenters_when_anchor_stays_favorited() {
 		let before = Favorites::from_iter([
 			Path::new("/a").into(),
@@ -435,6 +465,7 @@ mod tests {
 
 		let mut cycle = FavoriteCycle {
 			anchor: Some(c.clone()),
+			current: Some(c.clone()),
 			prev: Some(b.clone()),
 			next: Some(Path::new("/d").into()),
 		};

@@ -34,6 +34,11 @@ fn try_init(merge: bool) -> anyhow::Result<()> {
 	Ok(())
 }
 
+/// Fork: 配色は常に dark に固定する。
+/// 端末検出値 (EMULATOR.light) は画像アダプタ等で依然として使われるが、
+/// テーマ選択には使わない。
+pub fn effective_light() -> bool { false }
+
 pub fn init_flavor(light: bool) -> anyhow::Result<()> {
 	if let Err(e) = try_init_flavor(light, true) {
 		wait_for_key(e)?;
@@ -96,4 +101,12 @@ pub(crate) fn error_with_input<T>(
 		err.set_input(Some(input));
 		err
 	})
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn effective_light_always_false() { assert!(!effective_light()); }
 }

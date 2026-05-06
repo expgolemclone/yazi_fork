@@ -36,6 +36,8 @@ impl Actions {
 		writeln!(s, "    TERM_PROGRAM_VERSION: {:?}", env::var_os("TERM_PROGRAM_VERSION"))?;
 		writeln!(s, "    Brand.from_env      : {:?}", yazi_emulator::Brand::from_env())?;
 		writeln!(s, "    Emulator.detect     : {:?}", &*yazi_emulator::EMULATOR)?;
+		writeln!(s, "    Detected background : {}", if yazi_emulator::EMULATOR.light { "light" } else { "dark" })?;
+		writeln!(s, "    Effective theme mode: dark (fork override)")?;
 
 		writeln!(s, "\nAdapter")?;
 		writeln!(s, "    Adapter.matches    : {:?}", yazi_adapter::ADAPTOR)?;

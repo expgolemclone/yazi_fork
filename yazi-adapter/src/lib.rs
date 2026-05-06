@@ -32,7 +32,7 @@ pub fn init() -> anyhow::Result<()> {
 	}
 
 	EMULATOR.init(emulator);
-	yazi_config::init_flavor(EMULATOR.light)?;
+	yazi_config::init_flavor(yazi_config::effective_light())?;
 
 	ADAPTOR.set(Adapter::matches(&EMULATOR));
 	ADAPTOR.get().start();

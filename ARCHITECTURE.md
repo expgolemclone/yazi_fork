@@ -49,6 +49,15 @@ yazi-binding (Lua ↔ Rust バインディング)
 
 ## Fork 固有の追加機能
 
+### Dark theme 固定
+
+配色 (preset) 選択で端末背景の自動判定を使わず、常に `theme-dark.toml` を採用する。端末エミュレータ検出自体は画像アダプタ等のために残し、`EMULATOR.light` も Lua の `ya.term.light` 経由で引き続き読める。テーマ選択だけを `yazi_config::effective_light()` (常に `false`) 経由に切り替えている。
+
+反映箇所:
+- 起動時: `yazi-adapter/src/lib.rs` → `init_flavor(effective_light())`
+- Hot-reload: `yazi-actor/src/app/theme.rs` → `build_flavor(effective_light(), true)`
+- `--debug`: `yazi-boot/src/actions/debug.rs` — "Detected background" (検出値) と "Effective theme mode: dark (fork override)" を表示
+
 ### Favorites トラバーサル
 
 デフォルトの keymap に以下を追加している:

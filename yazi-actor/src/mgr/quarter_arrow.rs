@@ -40,14 +40,13 @@ impl Actor for QuarterArrow {
 			}
 			Target::Reveal(target) => {
 				let data = act!(mgr:reveal, cx, RevealForm {
-					target,
+					target: target.clone(),
 					raw: true,
 					source: CdSource::Reveal,
 					no_dummy: true,
 				})?;
 				if preserving_cycle {
-					let landed = current_target(cx);
-					cx.mgr.favorite_cycle.relocate(landed);
+					cx.mgr.favorite_cycle.relocate(target);
 				}
 				Ok(data)
 			}
@@ -55,9 +54,6 @@ impl Actor for QuarterArrow {
 	}
 }
 
-fn current_target(cx: &Ctx) -> UrlBuf {
-	cx.hovered().map(|hovered| hovered.url.clone()).unwrap_or_else(|| cx.cwd().clone())
-}
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct QuarterKey {

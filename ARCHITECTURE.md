@@ -68,7 +68,7 @@ yazi-binding (Lua ↔ Rust バインディング)
 
 b/B のトラバーサル順は JSON 登録順ではなく、パス名（= 銘柄コード）の昇順。
 
-active な `b/B` 巡回中に `q/Q` で同一銘柄の別四半期 PDF へ移動した場合、favorite の前後候補は保持される。したがって次の `b/B` は `q/Q` 前にいた favorite を基準に続行される。一方で手動ホバー移動など通常の移動は従来どおり hovered を基準に再計算する。
+active な `b/B` 巡回中に `q/Q` で同一銘柄の別四半期 PDF へ移動した場合、favorite の前後候補は保持される。したがって次の `b/B` は `q/Q` 前にいた favorite を基準に続行される。一方で手動ホバー移動など通常の移動は従来どおり hovered を基準に再計算する。`q/Q` の `relocate` は `cx.hovered()` ではなく reveal に渡したターゲット URL を直接使う。これにより `mgr:reveal` → `mgr:cd` のチェーンで一時的に hover がずれても、正しいティッカーシンボルで favorite cycle が更新され、連続した `q/Q` 使用で銘柄がずれない。
 
 関連ファイル:
 

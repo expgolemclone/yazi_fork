@@ -5,7 +5,6 @@ export ARTIFACT_NAME="yazi-$1"
 export YAZI_GEN_COMPLETIONS=1
 
 # Build the target
-git config --global --add safe.directory "*"
 cargo build --release --locked --target "$1"
 
 # Copy the binaries to a known location
@@ -15,8 +14,7 @@ cp "target/$1/release/yazi" "target/release/yazi"
 
 # Package deb
 if [[ "$ARTIFACT_NAME" == *-linux-* ]] && { [[ "$ARTIFACT_NAME" == *-aarch64-* ]] || [[ "$ARTIFACT_NAME" == *-x86_64-* ]]; }; then
-	cargo install cargo-deb
-	cargo deb -p yazi-packing --no-build --target "$1" -o "$ARTIFACT_NAME.deb"
+	mise exec -- cargo deb -p yazi-packing --no-build --target "$1" -o "$ARTIFACT_NAME.deb"
 fi
 
 # Create the artifact

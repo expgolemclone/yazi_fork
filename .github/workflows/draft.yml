@@ -55,6 +55,12 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
 
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        if: runner.os == 'Linux' && (startsWith(matrix.target, 'x86_64-') || startsWith(matrix.target, 'aarch64-'))
+        with: &mise-deb
+          version: '2026.10.12'
+          install_args: cargo:cargo-deb
+
       - name: Build
         run: ./scripts/build.sh ${{ matrix.target }}
 
@@ -128,6 +134,9 @@ jobs:
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
+
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with: *mise-deb
 
       - name: Build
         run: ./scripts/build.sh ${{ matrix.target }}

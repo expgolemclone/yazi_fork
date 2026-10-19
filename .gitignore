@@ -12,6 +12,8 @@
 !CONTRIBUTING.md
 !Cargo.lock
 !Cargo.toml
+!mise.toml
+!mise.lock
 !LICENSE
 !LICENSE-ICONS
 !README.md

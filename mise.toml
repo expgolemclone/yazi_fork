@@ -1,0 +1,2 @@
+[tools]
+"cargo:cargo-deb" = { version = "3.8.0", locked = "true" }
